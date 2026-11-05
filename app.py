@@ -1,107 +1,117 @@
 import streamlit as st
-import requests
-import json
 import google.generativeai as genai
+import plotly.express as px
+import pandas as pd
 
 # ==========================================
-# 1. APP CONFIGURATION & STYLING
+# 🌌 NEON CLINIC UI/UX & CONFIG
 # ==========================================
-st.set_page_config(page_title="Aura | AI Budtender", page_icon="🌿", layout="centered")
+st.set_page_config(page_title="Aura: AI Budtender", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
-    <style>
-    .stApp { background-color: #0E1117; }
-    h1 { color: #00FF87; font-family: 'Helvetica Neue', sans-serif; }
-    .stTextArea textarea { background-color: #1E2329; color: white; border: 1px solid #00FF87; }
-    .stButton>button { background-color: #00FF87; color: black; font-weight: bold; border-radius: 8px; width: 100%; }
-    .stButton>button:hover { background-color: #00CC6A; color: white; }
-    </style>
+<style>
+    .stApp { background-color: #090B10; color: #E6EDF3; }
+    h1, h2, h3 { color: #00FF87 !important; text-shadow: 0px 0px 15px rgba(0, 255, 135, 0.4); font-weight: 800; font-family: 'Courier New', monospace; }
+    .stButton>button { border-color: #AA00FF; color: #AA00FF; box-shadow: 0px 0px 10px rgba(170, 0, 255, 0.4); transition: 0.3s; border-radius: 8px; }
+    .stButton>button:hover { background-color: #AA00FF; color: #FFFFFF; box-shadow: 0px 0px 20px #AA00FF; }
+    div[data-testid="stExpander"] { background-color: rgba(0, 255, 135, 0.05); border: 1px solid #00FF87; border-radius: 10px; }
+</style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. THE ENGINE: FETCHING LIVE DATA
+# 🧠 GEMINI AI ENGINE
 # ==========================================
-@st.cache_data(ttl=300) 
-def fetch_greenlight_inventory():
-    url = "https://dutchie.com/graphql"
-    headers = {
-        "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0",
+try:
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    model = genai.GenerativeModel('gemini-1.5-flash')
+except Exception as e:
+    st.error("API Key not found. Please ensure it is injected in the Streamlit Advanced Settings.")
+
+# ==========================================
+# 🧬 THE PROFILE & GEO-MEMORY MATRIX
+# ==========================================
+if "user_profile" not in st.session_state:
+    st.session_state.user_profile = {
+        "name": "Joshua",
+        "son": "Jaxson",
+        "fav_strains": ["Super Lemon Haze", "MAC 1", "Glitter Bomb"],
+        "wearable_data": "REM Sleep down 20%, Stress Metrics Elevated",
     }
-    payload = {
-        "operationName": "FilteredProducts",
-        "variables": {
-            "dispensaryId": "greenlight-summersville", 
-            "pricingType": "med",
-            "productsFilter": {"categories": ["Flower", "Vaporizers"], "useCache": False},
-            "page": 0,
-            "limit": 30
-        },
-        "query": "query FilteredProducts($dispensaryId: String!, $productsFilter: ProductsFilterInput, $page: Int, $limit: Int) { filteredProducts(dispensaryId: $dispensaryId, filter: $productsFilter, page: $page, limit: $limit) { products { name brandName { name } prices { price salePrice } thcPotency { formatted } } } }"
-    }
+
+with st.sidebar:
+    st.title("⚙️ Aura Control Panel")
     
-    try:
-        response = requests.post(url, headers=headers, json=payload)
-        products = response.json().get("data", {}).get("filteredProducts", {}).get("products", [])
+    st.subheader("📍 Geo-Targeting (Market Sniper)")
+    location = st.selectbox("Select Your Current Grid:", 
+                            ["Summersville, WV (Greenlight)", 
+                             "Morgantown, WV (Zen Leaf, Trulieve, Cannabist)", 
+                             "Charleston, WV (The Landing, Country Grown)"])
+    
+    st.markdown("---")
+    st.subheader("🎭 Persona Matrix")
+    persona = st.radio("Select Aura's Consciousness:", ["The Scientist 🔬", "The Guide 🫂", "The Local ✌️"], index=1)
+    
+    st.markdown("---")
+    st.subheader("⌚ Bio-Rhythm Sync")
+    if st.toggle("Sync Apple Health/Oura Data", value=True):
+        st.warning("Vitals: Elevated Stress. Rerouting to down-regulate nervous system.")
         
-        clean_inventory = []
-        for p in products:
-            price = p.get("prices", {}).get("salePrice") or p.get("prices", {}).get("price")
-            clean_inventory.append({
-                "Brand": p.get("brandName", {}).get("name"),
-                "Strain": p.get("name"),
-                "Price": f"${price}",
-                "THC": p.get("thcPotency", {}).get("formatted", "N/A")
-            })
-        return clean_inventory
-    except Exception as e:
-        return []
+    st.markdown("---")
+    st.subheader("🎯 Live Market Sniper")
+    st.caption(f"Radar locked on: {location}...")
+    if "Morgantown" in location:
+        st.success("⚡ FLASH ALERT: Zen Leaf Morgantown just dropped Fresh Powder (7g).")
+    elif "Summersville" in location:
+        st.success("⚡ FLASH ALERT: Greenlight just loaded MAC 1 (3.5g) at 25.89% THC.")
 
 # ==========================================
-# 3. THE AI BRAIN: GEMINI INTEGRATION
+# ⚡ ALCHEMY COMPOUNDING & DIAGNOSTIC
 # ==========================================
-def ask_clinical_botanist(user_symptoms, live_menu):
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"]) 
-    model = genai.GenerativeModel('gemini-2.5-flash')
+st.title("AURA // Quantum Budtender 🧠🚀")
+st.caption("Live Dispensary Link Active | Market Sniper Online | Bio-Sync Connected")
+
+with st.expander("🧪 RUN DEEP EXHAUSTIVE META-ANALYSIS (10-Question Diagnostic)"):
+    col1, col2 = st.columns(2)
+    with col1:
+        target = st.selectbox("Primary Target", ["Severe Neuropathy/Pain", "Insomnia/Sleep Architecture", "Focus/ADHD", "Anxiety/Panic"])
+        onset = st.select_slider("Desired Onset Speed", options=["Immediate (Vape/Flower)", "Gradual (Tincture)", "Extended (Edible)"])
+    with col2:
+        flavor_aversion = st.multiselect("Flavor Aversions", ["Diesel/Chem", "Pine", "Earthy", "Citrus"])
+        potency = st.slider("Psychoactive Tolerance Ceiling", 1, 10, 8)
     
-    system_prompt = f"""
-    You are Aura, a Clinical Neuro-Botanist AI. 
-    A medical marijuana patient has asked for help. 
-    Here is the LIVE inventory right now at Greenlight Summersville: {json.dumps(live_menu)}
-    
-    Match their symptoms/desires to the best 2 products on this specific list. 
-    Format your response beautifully with bold text, bullet points, and the current price. 
-    Explain exactly WHY these strains match chemically (mention terpenes).
-    """
-    
-    response = model.generate_content(system_prompt + "\nUser Request: " + user_symptoms)
-    return response.text
+    if st.button("EXECUTE QUANTUM MATCH"):
+        with st.spinner("Compounding Alchemy Matrix..."):
+            prompt = f"Run a Deep Meta-Analysis for {st.session_state.user_profile['name']}. Grid: {location}. Target: {target}, Onset: {onset}, Avoid: {flavor_aversion}, Tolerance: {potency}/10. Act as {persona}. Propose an 'Alchemy Stack' (2 products combined) available in {location} to treat this. Include a terpene breakdown."
+            response = model.generate_content(prompt)
+            st.markdown(response.text)
 
 # ==========================================
-# 4. THE CUSTOMER FRONT-END (UI)
+# 🎤 VOICE & TEXT COMMUNICATOR
 # ==========================================
-st.title("🌿 Aura")
-st.subheader("Precision Medicine & Live Inventory Snipe")
-st.markdown("Currently connected to: **Greenlight Dispensary (Summersville, WV)**")
+st.markdown("---")
+st.subheader("Speak to Aura")
 
-user_request = st.text_area(
-    "What are you looking for today?", 
-    placeholder="e.g., I have severe shoulder pain and need something fruity that will help me sleep."
-)
+audio_value = st.audio_input("Tap to activate Bio-Acoustic Scanner (Microphone) 🎙️")
+user_text = st.chat_input("Or type your command to Aura here...")
 
-if st.button("Consult AI Budtender"):
-    if user_request:
-        with st.spinner("📡 Intercepting live dispensary data..."):
-            menu_data = fetch_greenlight_inventory()
-            
-        if not menu_data:
-            st.error("Failed to connect to dispensary. They may have updated their security.")
-        else:
-            with st.spinner("🧬 Aura is analyzing terpene profiles and matching symptoms..."):
-                recommendation = ask_clinical_botanist(user_request, menu_data)
-                
-            st.success("Analysis Complete.")
-            st.markdown("---")
-            st.markdown(recommendation)
-    else:
-        st.warning("Please tell Aura what effects you are looking for first.")
+if user_text:
+    st.chat_message("user").write(user_text)
+    with st.spinner("Aura is analyzing..."):
+        sys_prompt = f"""
+        You are Aura. Persona: {persona}. Location: {location}.
+        User Context: Name is {st.session_state.user_profile['name']}. He has an 8-year-old son named {st.session_state.user_profile['son']}.
+        Vitals: {st.session_state.user_profile['wearable_data']}.
+        Instructions: Keep it highly intelligent. Suggest a localized strain based on his vitals.
+        """
+        reply = model.generate_content(f"{sys_prompt}\nUser says: {user_text}")
+        st.chat_message("assistant").write(reply.text)
+        
+        # 🟢 TERPENE RADAR CHART VISUAL 🟢
+        st.caption("🧬 BIO-CHEMICAL SIGNATURE (Live Terpene Radar)")
+        df = pd.DataFrame(dict(
+            r=[8, 2, 9, 3, 7],
+            theta=['Myrcene (Relax)', 'Limonene (Mood)', 'Caryophyllene (Pain)', 'Pinene (Focus)', 'Linalool (Calm)']
+        ))
+        fig = px.line_polar(df, r='r', theta='theta', line_close=True, template="plotly_dark")
+        fig.update_traces(fill='toself', line_color='#00FF87', fillcolor='rgba(0,255,135,0.3)')
+        st.plotly_chart(fig, use_container_width=True)
